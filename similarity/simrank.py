@@ -10,10 +10,13 @@ import copy
 import sys
 import networkx as nx
 from collections import defaultdict
+from _prune_stack import _prune_stack
+import time
+
 __author__ = """Hung-Hsuan Chen (hhchen@psu.edu)"""
 __all__ = ['simrank']
 
-def simrank(G, c=0.9, max_iter=100, remove_neighbors=False, remove_self=False, dump_process=False):
+def simrank(G, c=0.9, K = 10, max_iter=100, remove_neighbors=False, remove_self=False, dump_process=False):
     """Return the SimRank similarity between nodes
 
     Parameters
@@ -63,13 +66,16 @@ def simrank(G, c=0.9, max_iter=100, remove_neighbors=False, remove_self=False, d
     sim_old = defaultdict(list)
     sim = defaultdict(list)
     for n in G.nodes():
-        sim[n] = defaultdict(int)
+        sim[n] = defaultdict(float)
         sim[n][n] = 1
-        sim_old[n] = defaultdict(int)
+        sim_old[n] = defaultdict(float)
         sim_old[n][n] = 0
 
     # calculate simrank
     for iter_ctr in range(max_iter):
+
+        print iter_ctr, max_iter, time.ctime()
+
         if _is_converge(sim, sim_old):
             break
         sim_old = copy.deepcopy(sim)
@@ -85,6 +91,9 @@ def simrank(G, c=0.9, max_iter=100, remove_neighbors=False, remove_self=False, d
                         s_uv += sim_old[n_u][n_v]
                 sim[u][v] = (c * s_uv / (len(G.neighbors(u)) * len(G.neighbors(v)))) \
                         if len(G.neighbors(u)) * len(G.neighbors(v)) > 0 else 0
+
+            sim[u] = _prune_stack(sim[u], K)
+
         if dump_process:
             print ''
 
@@ -98,6 +107,8 @@ def simrank(G, c=0.9, max_iter=100, remove_neighbors=False, remove_self=False, d
                 sim[m][n] = 0
 
     return sim
+
+
 
 def _is_converge(s1, s2, eps=1e-4):
     for i in s1.keys():
